@@ -2,6 +2,16 @@ import fetch from "node-fetch";
 import FormData from "form-data";
 
 export default async function handler(req, res) {
+  // ✅ CORS HEADERS — THIS IS THE FIX
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -14,12 +24,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing env variables" });
     }
 
+    // Read raw image bytes
     const chunks = [];
     for await (const chunk of req) {
       chunks.push(chunk);
     }
-
     const imageBuffer = Buffer.concat(chunks);
+
+    if (!imageBuffer.length) {
+      return res.status(400).json({ error: "Empty image" });
+    }
 
     const form = new FormData();
     form.append("chat_id", CHAT_ID);
