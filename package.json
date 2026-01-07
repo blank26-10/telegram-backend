@@ -2,8 +2,7 @@
   "name": "telegram-backend",
   "type": "module",
   "dependencies": {
-    "axios": "^1.6.0",
-    "form-data": "^4.0.5",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "form-data": "^4.0.0"
   }
 }
