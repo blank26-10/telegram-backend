@@ -1,10 +1,18 @@
+import FormData from "form-data";
+import fetch from "node-fetch";
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
+
 export default async function handler(req, res) {
-  // 🔓 CORS HEADERS (CRITICAL)
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -22,16 +30,25 @@ export default async function handler(req, res) {
     }
 
     const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+
     const buffer = Buffer.concat(chunks);
 
     const form = new FormData();
     form.append("chat_id", CHAT_ID);
-    form.append("photo", new Blob([buffer], { type: "image/png" }));
+    form.append("photo", buffer, {
+      filename: "alert.png",
+      contentType: "image/png"
+    });
 
     const tgRes = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`,
-      { method: "POST", body: form }
+      {
+        method: "POST",
+        body: form
+      }
     );
 
     const data = await tgRes.json();
@@ -42,7 +59,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Telegram send failed" });
+    console.error("Telegram backend error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
