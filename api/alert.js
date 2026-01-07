@@ -1,45 +1,48 @@
-import axios from "axios";
-import FormData from "form-data";
-
-export const config = {
-  api: {
-    bodyParser: false
-  }
-};
-
 export default async function handler(req, res) {
+  // 🔓 CORS HEADERS (CRITICAL)
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Preflight request
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const botToken = process.env.BOT_TOKEN;
-    const chatId = process.env.CHAT_ID;
+    const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+    const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-    if (!botToken || !chatId) {
+    if (!TELEGRAM_TOKEN || !CHAT_ID) {
       return res.status(500).json({ error: "Missing env variables" });
     }
 
     const chunks = [];
-    req.on("data", (chunk) => chunks.push(chunk));
-    req.on("end", async () => {
-      const buffer = Buffer.concat(chunks);
+    for await (const chunk of req) chunks.push(chunk);
+    const buffer = Buffer.concat(chunks);
 
-      const form = new FormData();
-      form.append("chat_id", chatId);
-      form.append("caption", "🚨 AGROW INTRUSION ALERT");
-      form.append("photo", buffer, { filename: "alert.png" });
+    const form = new FormData();
+    form.append("chat_id", CHAT_ID);
+    form.append("photo", new Blob([buffer], { type: "image/png" }));
 
-      await axios.post(
-        `https://api.telegram.org/bot${botToken}/sendPhoto`,
-        form,
-        { headers: form.getHeaders() }
-      );
+    const tgRes = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`,
+      { method: "POST", body: form }
+    );
 
-      res.status(200).json({ success: true });
-    });
+    const data = await tgRes.json();
+
+    if (!data.ok) {
+      return res.status(500).json(data);
+    }
+
+    return res.status(200).json({ success: true });
   } catch (err) {
-    console.error(err.response?.data || err.message);
-    res.status(500).json({ error: "Telegram failed" });
+    console.error(err);
+    return res.status(500).json({ error: "Telegram send failed" });
   }
 }
