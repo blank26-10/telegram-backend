@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     for await (const chunk of req) {
       chunks.push(chunk);
     }
+
     const imageBuffer = Buffer.concat(chunks);
 
     const form = new FormData();
